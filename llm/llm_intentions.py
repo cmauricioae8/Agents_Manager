@@ -49,7 +49,7 @@ def split_and_prioritize(text: str, general_rag) -> List[Dict[str, Any]]:
     if not clauses:
         clauses.append(norm_text(text, False))
 
-    accions = []
+    actions = []
     for c in clauses:
         print(c, flush=True)
         # 1) Respuestas cortas por GENERAL_RAG si hay alta confianza

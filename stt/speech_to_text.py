@@ -18,7 +18,7 @@ class SpeechToText:
         self.model = whisper.load_model(model_name, download_root = model_path.parent)
 
     
-    def worker_lopp(self, audio_bytes: bytes) -> Optional[str | None]:
+    def worker_loop(self, audio_bytes: bytes) -> Optional[str | None]:
         """With this we can see if we recieve text or none"""
         if audio_bytes is None:
             return None
@@ -89,7 +89,7 @@ if __name__ == "__main__":
         while True:
             result = audio_listener.read_frame(ww.frame_samples)
             n_result = ww.wake_word_detector(result)
-            stt.worker_lopp(n_result)
+            stt.worker_loop(n_result)
     except KeyboardInterrupt:
         audio_listener.deleate()
         print("Saliendo")

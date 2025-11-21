@@ -5,7 +5,7 @@ import json
 from typing import Optional, Dict, Any
 from llama_cpp import Llama
 
-from config.settings import CONTEXT_LLM,THREADS_LLM,N_BACH_LLM,GPU_LAYERS_LLM,CHAT_FORMAT_LLM,USE_LLM
+from config.settings import CONTEXT_LLM,THREADS_LLM,N_BATCH_LLM,GPU_LAYERS_LLM,CHAT_FORMAT_LLM,USE_LLM
 from config.llm_system_prompt_def import GENERAL_SYSTEM_PROMPT
 
 class LLM:
@@ -18,7 +18,7 @@ class LLM:
         self.model_path = model_path
         self.ctx = CONTEXT_LLM         # contexto razonable
         self.threads = THREADS_LLM
-        self.n_batch = N_BACH_LLM   # 256–512 bien en CPU
+        self.n_batch = N_BATCH_LLM   # 256–512 bien en CPU
         self.n_gpu_layers = GPU_LAYERS_LLM  # 0 si no hay CUDA
         self.chat_format = CHAT_FORMAT_LLM.strip()
 

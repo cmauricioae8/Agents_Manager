@@ -21,7 +21,7 @@ COURTESY_RE = re.compile(r"""
 
   # --- “POR FAVOR” Y VARIANTES ---
   por\s+favor|de\s+favor|favor\s+de|
-  porfa(?:vor|s)?|porfis|porfai|por\s+fice|
+  porfa(?:vor|s)?|porfis|porfai|por\s+fis|
   please|pl[ií]s|
 
   # --- GRACIAS Y CIERRES CORTESÍA ---

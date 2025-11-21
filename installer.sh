@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# setup_octopy.sh — One-shot installer for octy
+# installer.sh — One-shot installer for octy
 # Tested on Ubuntu/Debian-like systems.
 
 set -euo pipefail
