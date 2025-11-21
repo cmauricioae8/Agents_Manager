@@ -24,11 +24,6 @@ CHAT_FORMAT_LLM = "chatml-function-calling" #NOT recommended to change unless yo
 FUZZY_LOGIC_ACCURACY_GENERAL_RAG = 0.70
 PATH_GENERAL_RAG = "config/data/general_rag.json"
 
-"""Audio Publisher"""
-AUDIO_PUBLISHER_DEVICE_ID = -1 #This is the default output
-AUDIO_PUBLISHER_FRAMES_PER_BUFFER = 256
-AUDIO_PUBLISHER_DEBUG = True #Show in terminal the debug process
-
 """Text-to-Speech"""
 SAMPLE_RATE_TTS = 24000
 DEVICE_SELECTOR_TTS = "cpu" # "cpu" or "cuda"

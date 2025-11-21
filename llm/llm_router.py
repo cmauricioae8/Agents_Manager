@@ -3,9 +3,8 @@ from config.settings import USE_LLM
 from typing import Callable, Dict
 
 class Router:
-    def __init__(self, llm, get_info):
+    def __init__(self, llm):
         self.llm = llm
-        self.get_info = get_info
 
         self.handlers: Dict[str, Callable[[str], str]] = {
             "rag": self.data_return,

@@ -7,7 +7,6 @@ from llm.llm_intentions import split_and_prioritize
 from llm.llm_data import GENERAL_RAG
 from llm.llm_client import LLM
 from llm.llm_router import Router
-from llm.llm_tools import GetInfo
 
 
 class LlmAgent:
@@ -19,8 +18,7 @@ class LlmAgent:
         self.log = logging.getLogger("LLM")     
         self.general_rag = GENERAL_RAG(os.path.expanduser(PATH_GENERAL_RAG)) 
         self.llm = LLM(model_path =  model_path)
-        self.get_info = GetInfo()
-        self.router = Router(self.llm, self.get_info)
+        self.router = Router(self.llm)
         
         self.log.info("LLM initialized - Octybot listo ✅ ")
 

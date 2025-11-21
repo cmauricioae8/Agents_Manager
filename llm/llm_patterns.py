@@ -57,14 +57,3 @@ COURTESY_RE = re.compile(r"""
 )
 (?!\w)                                  # borde derecho
 """, re.IGNORECASE | re.VERBOSE)
-
-# ______________________Cases that we want to execute_________________________________
-
-# Empty dictionaries as we removed specific hardware intents
-INTENT_RES = {}
-
-# Priority is empty
-INTENT_PRIORITY = ()
-
-# Routing is empty
-INTENT_ROUTING = {}

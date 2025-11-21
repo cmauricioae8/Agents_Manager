@@ -61,21 +61,21 @@ class WakeWord:
             subprocess.Popen([sys.executable, "-m", "avatar.avatar_server"], stdin=subprocess.DEVNULL, stdout = subprocess.PIPE, stderr = subprocess.PIPE, text=True)
             webbrowser.open(Path("avatar/OctoV.html").resolve().as_uri(), new=0, autoraise=True)
 
-    def wake_word_detector(self, frame:bytes) -> None | bytes:
-        
+    def wake_word_detector(self, frame: bytes) -> None | bytes:
         """Process one 10 ms PCM int16 mono frame for wake-word detection.
 
-        - Uses WebRTC VAD to gate non-speech: decays `partial_hits`, feeds Vosk to keep
-        buffers synced, and may auto-`deactivate_whisper()` when silence persists.
-        - For speech, feeds Vosk:
-            * Full result (`AcceptWaveform=True`): if text matches wake, logs and
-            `confirm_active_whisper()`; else resets counters (and deactivates if listening).
-            * Partial result: increments `partial_hits` on match; when threshold is
-            reached, logs and `activate_whisper()`, then resets.
-        - Mutates internal state (`partial_hits`, `listening`, `listening_confirm`,
-        `wake_word_flag`) and may call `activate_whisper()`, `confirm_active_whisper()`,
-        or `deactivate_whisper()`.
-        - Requires: `self.sample_rate`, `self.vad`, `self.rec`, `self.matches_wake()`.
+        - Uses WebRTC VAD to detect speech vs. silence.
+        - **Silence Handling:** If silence persists beyond the threshold (`silence_frames_to_drain`):
+            * If the wake word was previously confirmed (`listening_confirm`), it returns the buffered audio (drains).
+            * If the wake word was only tentatively detected (`listening`) but not confirmed, it clears the buffer and stops listening.
+        - **Speech Processing:** Feeds the frame to the Vosk recognizer.
+            * **Full Result:** If a full wake word is detected, it sets `listening_confirm` to True, locking the system into recording mode until silence is heard.
+            * **Partial Result:** If a partial match is found, it sets `listening` to True (tentative state) and begins buffering audio. It tracks `partial_hits` to debounce false positives.
+        - **Buffering:** Automatically adds speech frames to the buffer if the system is in a listening state.
+        
+        Returns:
+            bytes: The complete audio buffer if a recording session finishes (silence after confirmation).
+            None: If still listening or no wake word detected.
         """
         flag = True if self.vad.is_speech(frame, self.sample_rate) else False
 
