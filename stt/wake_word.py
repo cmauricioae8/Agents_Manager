@@ -207,6 +207,6 @@ if "__main__" == __name__:
                 print(f"Wake Word detectada, enviando {len(n_result)} bytes de audio para STT")
 
     except KeyboardInterrupt:
-        audio_listener.deleate()
+        audio_listener.terminate()
         print(" Saliendo")
         exit(0)

@@ -89,7 +89,7 @@ class AudioListener:
             self.stream.close()
             self.stream = None
 
-    def terminate(self):   # <-- Make sure you renamed this from 'deleate'
+    def terminate(self):
         """ Clean up the audio interface and stream."""
         if self.stream is not None:
             self.stop_stream()

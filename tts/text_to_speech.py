@@ -94,7 +94,7 @@ class TTS:
                 amplitude_callback(amplitude)
 
             idx += chunk_size
-        self.stop_tts
+        self.stop_tts()
         return True
 
     def start_stream(self):

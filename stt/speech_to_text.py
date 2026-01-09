@@ -91,7 +91,7 @@ if __name__ == "__main__":
             n_result = ww.wake_word_detector(result)
             stt.worker_loop(n_result)
     except KeyboardInterrupt:
-        audio_listener.deleate()
+        audio_listener.terminate()
         print("Saliendo")
         exit(0)
 

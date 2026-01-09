@@ -22,6 +22,9 @@ class OctybotAgent:
 
         #Text-to-Speech
         self.tts = TTS(str(model.ensure_model("tts")[0]), str(model.ensure_model("tts")[1]))
+
+        # Start the audio stream
+        self.audio_listener.start_stream()
         
         self.log.info("Octy Agent Listo")
     
@@ -34,8 +37,7 @@ class OctybotAgent:
             - Pass this info to the llm
             - The llm split the answers 
             - Publish the answer as tts"""
-        
-        self.audio_listener.start_stream()
+
         text_transcribed = None
 
         while text_transcribed == None:
@@ -43,7 +45,6 @@ class OctybotAgent:
             wake_word_buffer =  self.wake_word.wake_word_detector(audio_capture)
             text_transcribed = self.stt.worker_loop(wake_word_buffer)
             
-        self.audio_listener.stop_stream()
         for out in self.llm.ask(text_transcribed):
             get_audio = self.tts.synthesize(out)
             self.tts.play_audio_with_amplitude(get_audio)
@@ -52,9 +53,9 @@ class OctybotAgent:
         self.audio_listener.terminate()
         self.tts.stop_tts()
 
-    
 
-            
+
+
  #———— Example Usage ————-
 if "__main__" == __name__:
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s %(asctime)s] [%(name)s] %(message)s")
