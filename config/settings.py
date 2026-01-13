@@ -1,49 +1,78 @@
 import os
-#THIS IS THE CONFIG FILE
-#Here you can control everything of the LLM Package
 
-"""Global"""
-LANGUAGE = "es" #The code is actually not prepared to work with other languages, but for future improvements
-MODELS_PATH = "config/models.yml"
+"""
+--------------------------------------------------------------------------
+GLOBAL CONFIGURATION SETTINGS
+--------------------------------------------------------------------------
+This file controls the behavior of the entire Local-LLM package.
+Adjust these parameters to tune performance, sensitivity, and functionality.
+--------------------------------------------------------------------------
+"""
 
-"""Audio Listener is the node to hear something from the MIC"""
-AUDIO_LISTENER_DEVICE_ID: int | None = None #The system is prepared to detect the best device, but if you want to force a device, put the id here
-AUDIO_LISTENER_CHANNELS = 1 # "mono" or "stereo"
-AUDIO_LISTENER_SAMPLE_RATE = 16000
-AUDIO_LISTENER_FRAMES_PER_BUFFER = 1000
+# --- Global Settings ---
+LANGUAGE = "es"  # ISO code for the language (currently optimized for Spanish)
+MODELS_PATH = "config/models.yml"  # Path to the model definition file
 
-"""LLM"""
-USE_LLM = True #If you disable this flag, and the question is not in the Categories we don't call the general knowledge.
-CONTEXT_LLM = 1024 #The size of the context that your model is going to receive
-THREADS_LLM = os.cpu_count() or 8 #Threads that has available your model 
-N_BATCH_LLM = 512 #The size of the info that gpu or cpu is going to process
-GPU_LAYERS_LLM = 0 #How many layers your model is going to use in GPU, for CPU use "0"
-CHAT_FORMAT_LLM = "chatml-function-calling" #NOT recommended to change unless you change the model
 
-"""Information - data"""
-FUZZY_LOGIC_ACCURACY_GENERAL_RAG = 0.70 # Configure the priority of LLM over the RAG
-PATH_GENERAL_RAG = "config/data/general_rag.json"
+# --- Audio Listener (Microphone Input) ---
+# Controls how the system captures raw audio from the hardware.
+AUDIO_LISTENER_DEVICE_ID: int | None = None  # Force a specific device ID (None = auto-detect)
+AUDIO_LISTENER_CHANNELS = 1                  # Audio channels: 1 = Mono, 2 = Stereo
+AUDIO_LISTENER_SAMPLE_RATE = 16000           # Sampling rate in Hz (16000 is standard for speech)
+AUDIO_LISTENER_FRAMES_PER_BUFFER = 1000      # Buffer size for audio stream
 
-"""Text-to-Speech"""
-SAMPLE_RATE_TTS = 24000
-DEVICE_SELECTOR_TTS = "cpu" # "cpu" or "cuda"
-VOLUME_TTS = 2.0 #Volume  of the TTS
-SPEED_TTS = 1.0 # 1.0 = Fast and 2.0 = slow
-PATH_TO_SAVE_TTS = "tts/audios" #Specify the PATH where we are going to save the Info
-NAME_OF_OUTS_TTS = "test" #This is the name that your file is going to revive Ex: test_0.wav -> A subfolder /test is gonna be created
-SAVE_WAV_TTS = False
 
-"""Speech-to-Text"""
-DEVICE_SELECTOR_STT = "cpu" # "cpu" or "cuda"
-SAMPLE_RATE_STT = 16000 #Whisper works at this sample_rate doesn't change unless it is necessary
-#IMPORTANT the system is prepare to work without this variable, but we have it for noisy environments, as a protection method
-LISTEN_SECONDS_STT = 5.0 #The time of the phrase that the tts is going to be active after de wake_word detection
-MIN_SILENCE_MS_TO_DRAIN_STT = 100 # 1s of time required to drain the buffer. Its divided by 10 because we sample at 10ms
-SELF_VOCABULARY_STT = "DatIA Demographics" 
+# --- Wake Word Detection (Hotword) ---
+# Controls sensitivity and activation phrases.
+ACTIVATION_PHRASE_WAKE_WORD = "ok robot"     # Primary activation phrase
+VARIANTS_WAKE_WORD = [                       # Acceptable variations of the phrase
+    "ok robot", 
+    "okay robot", 
+    "hey robot"
+]
+VAD_AGGRESSIVENESS = 3           # (0 -> 3) Voice Activity Detection aggressiveness (0 = Least, 3 = Most strict filtering)
+WAKE_WORD_REQUIRED_HITS = 10     # Consecutive partial matches required to trigger activation (Higher = Less false positives)
 
-"""Wake-Word"""
-ACTIVATION_PHRASE_WAKE_WORD = "ok robot" #The Activation Word that the model is going to detect
-VARIANTS_WAKE_WORD =  ["ok robot", "okay robot", "hey robot"] #variations
 
-""""Use Avatar"""
-AVATAR = False #If you want to use the avatar
+# --- Speech-to-Text (STT - Whisper) ---
+# Controls transcription accuracy and noise handling.
+DEVICE_SELECTOR_STT = "cpu"      # Inference device: "cpu" or "cuda"
+SAMPLE_RATE_STT = 16000          # DO NOT CHANGE - Required sample rate for Whisper
+LISTEN_SECONDS_STT = 5.0         # Max recording duration after wake word detection
+MIN_SILENCE_MS_TO_DRAIN_STT = 100 # Silence duration (ms) required to stop recording early
+SELF_VOCABULARY_STT = "DatIA Demographics" # Custom vocabulary hints for the model
+
+# Tuning Thresholds:
+NO_SPEECH_THRESHOLD_STT = 0.5             # (0.0 -> 1.0) Higher = Stricter (better for noise), Lower = Sensitive (better for quiet)
+HALLUCINATION_SILENCE_THRESHOLD_STT = 0.3 # (0.1 -> 0.9) Threshold to discard text if model suspects silence (prevents hallucinations)
+
+
+# --- Large Language Model (LLM) ---
+# Controls text generation and intelligence.
+USE_LLM = True                   # Master switch: Set False to disable general reasoning
+CONTEXT_LLM = 1024               # Context window size (tokens)
+THREADS_LLM = os.cpu_count() or 8 # CPU threads allocated for inference
+N_BATCH_LLM = 512                # Prompt processing batch size
+GPU_LAYERS_LLM = 0               # Number of layers to offload to GPU (0 = CPU only)
+CHAT_FORMAT_LLM = "chatml-function-calling" # Prompt template format
+REPEAT_PENALTY_LLM = 1.1         # (1.0 -> 1.5) Penalty for repetitive text (1.1 = Moderate, 1.5 = Aggressive)
+
+
+# --- RAG & Information Retrieval ---
+FUZZY_LOGIC_ACCURACY_GENERAL_RAG = 0.70 # Similarity threshold (0.0 -> 1.0) to match RAG entries
+PATH_GENERAL_RAG = "config/data/general_rag.json" # Path to the knowledge base
+
+
+# --- Text-to-Speech (TTS) ---
+# Controls the voice output generation.
+SAMPLE_RATE_TTS = 24000          # Output sample rate
+DEVICE_SELECTOR_TTS = "cpu"      # Inference device: "cpu" or "cuda"
+VOLUME_TTS = 2.0                 # Output volume multiplier
+SPEED_TTS = 1.0                  # Speech speed: 1.0 = Normal, 2.0 = Slow
+PATH_TO_SAVE_TTS = "tts/audios"  # Directory to save generated audio files
+NAME_OF_OUTS_TTS = "test"        # Base filename for saved audios
+SAVE_WAV_TTS = False             # Flag to save audio files to disk
+
+
+# --- Avatar Integration ---
+AVATAR = False                   # Enable/Disable visual avatar integration

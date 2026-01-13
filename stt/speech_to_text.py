@@ -3,9 +3,12 @@ from pathlib import Path
 
 import logging
 import numpy as np
-
 import whisper
-from config.settings  import SAMPLE_RATE_STT, LANGUAGE, SELF_VOCABULARY_STT, DEVICE_SELECTOR_STT
+from difflib import SequenceMatcher
+
+from config.settings  import (
+    SAMPLE_RATE_STT, LANGUAGE, SELF_VOCABULARY_STT,DEVICE_SELECTOR_STT,
+    NO_SPEECH_THRESHOLD_STT, HALLUCINATION_SILENCE_THRESHOLD_STT) 
 
 class SpeechToText:
     def __init__(self, model_path:str, model_name:str) -> None:
@@ -15,6 +18,25 @@ class SpeechToText:
         model_path = Path(model_path)
 
         self.model = whisper.load_model(model_name, download_root = model_path.parent, device=DEVICE_SELECTOR_STT)
+        
+
+        # --- This patch is to avoid a bug generated from Whisper, it helps to catch the generally know allcination outputs
+        # and redirect them as another output to keep the interaction as fluid as possible ---
+        # Common Whisper hallucinations to filter out
+        self.hallucinations = [
+            "la universidad",
+            "subtítulos realizados por",
+            "amara.org",
+            "gracias por ver",
+            "thanks for watching",
+            "suscríbete",
+            "dale like",
+            "copyright",
+            "todos los derechos reservados",
+            "hacé clic en el botón",
+            "regístrate",
+            "la policia"
+        ]
 
     
     def worker_loop(self, audio_bytes: bytes) -> Optional[str | None]:
@@ -23,15 +45,51 @@ class SpeechToText:
             return None
         try:
             text = self.stt_from_bytes(audio_bytes)
-            if text:  
+            if text:
+                # Check for Hallucinations
+                if self.check_hallucination(text):
+                    self.log.warning(f"Hallucination detected: '{text}'. Triggering retry.")
+                    return "**error_audio_retry**" # Magic Key for RAG
+
                 self.log.info(f"Se transcribió = {text}")
                 return text
             else:
-                self.log.info(f"Transcripción vacía")
-                return None
+                # Handle Empty Transcription (Audio detected but no words found)
+                self.log.info(f"Transcripción vacía. Triggering retry.")
+                return "**error_audio_retry**" 
             
         except Exception as e:
-            self.log.info(f"Error en STT: {e}")
+            self.log.error(f"Error en STT: {e}")
+            return None
+
+
+    def check_hallucination(self, text: str) -> bool:
+        """
+        Verify if the text is a valid transcription or a hallucination.
+        Uses a combination of substring presence and fuzzy matching ratio.
+        """
+        text_lower = text.lower().strip()
+        
+        # Check if the hallucination phrase exists in the text
+        for h in self.hallucinations:
+            if h in text_lower:
+                # Calculate similarity ratio
+                ratio = SequenceMatcher(None, h, text_lower).ratio()
+                
+                # If high match (> 0.6) or if it's a repetitive loop (length check)
+                if ratio > 0.6 or (len(text_lower) > len(h) * 1.5):
+                    return True
+                
+        # Check for word repetition
+        words = text_lower.split()
+        if len(words) >= 3:
+            for i in range(len(words) - 2):
+                if words[i] == words[i+1] == words[i+2]:
+                    self.log.warning(f"Repetitive loop detected: {words[i]}")
+                    return True
+                
+        return False
+
 
     def stt_from_bytes (self, audio_bytes: bytes) -> Optional[str]:
         """
@@ -47,11 +105,11 @@ class SpeechToText:
         x = pcm.astype(np.float32) / 32768.0
 
         if SAMPLE_RATE_STT != 16000:
-            self.log.info(f"Whisper Solo Funciona a 16 Khz, estás enviando información a {SAMPLE_RATE_STT}hz")
+            self.log.warning(f"Whisper Solo Funciona a 16 Khz, estás enviando información a {SAMPLE_RATE_STT}hz")
 
         result = self.model.transcribe(
             x,
-            temperature = 0.0, 
+            temperature = (0.0, 0.2, 0.3), # Limit retries to 3 attempts (0.0, 0.2, 0.3), Default (0.0, 0.2, 0.4, 0.6, 0.8, 1.0)
             fp16=False, 
             language = LANGUAGE, 
             task="transcribe",
@@ -59,15 +117,17 @@ class SpeechToText:
             carry_initial_prompt=True,
             condition_on_previous_text = False,
             word_timestamps = True,
-            hallucination_silence_threshold = 0.8,
-            no_speech_threshold = 0.5,
+            hallucination_silence_threshold = HALLUCINATION_SILENCE_THRESHOLD_STT,
+            no_speech_threshold = NO_SPEECH_THRESHOLD_STT,
             compression_ratio_threshold=2.4,
             beam_size=1
             )
 
         return(result["text"])or None
-    
- #———— Example Usage ————
+
+
+
+# ———— Example Usage ————
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s %(asctime)s] [%(name)s] %(message)s")
 
@@ -93,4 +153,3 @@ if __name__ == "__main__":
         audio_listener.terminate()
         print("Saliendo")
         exit(0)
-
