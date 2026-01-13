@@ -6,7 +6,9 @@ import numpy as np
 import whisper
 from difflib import SequenceMatcher
 
-from config.settings  import SAMPLE_RATE_STT, LANGUAGE, SELF_VOCABULARY_STT, DEVICE_SELECTOR_STT
+from config.settings  import (
+    SAMPLE_RATE_STT, LANGUAGE, SELF_VOCABULARY_STT,DEVICE_SELECTOR_STT,
+    NO_SPEECH_THRESHOLD_STT, HALLUCINATION_SILENCE_THRESHOLD_STT) 
 
 class SpeechToText:
     def __init__(self, model_path:str, model_name:str) -> None:
@@ -17,7 +19,9 @@ class SpeechToText:
 
         self.model = whisper.load_model(model_name, download_root = model_path.parent, device=DEVICE_SELECTOR_STT)
         
-        
+
+        # --- This patch is to avoid a bug generated from Whisper, it helps to catch the generally know allcination outputs
+        # and redirect them as another output to keep the interaction as fluid as possible ---
         # Common Whisper hallucinations to filter out
         self.hallucinations = [
             "la universidad",
@@ -30,7 +34,8 @@ class SpeechToText:
             "copyright",
             "todos los derechos reservados",
             "hacé clic en el botón",
-            "regístrate"
+            "regístrate",
+            "la policia"
         ]
 
     
@@ -65,15 +70,24 @@ class SpeechToText:
         """
         text_lower = text.lower().strip()
         
+        # Check if the hallucination phrase exists in the text
         for h in self.hallucinations:
-            # Check if the hallucination phrase exists in the text
             if h in text_lower:
                 # Calculate similarity ratio
                 ratio = SequenceMatcher(None, h, text_lower).ratio()
                 
                 # If high match (> 0.6) or if it's a repetitive loop (length check)
                 if ratio > 0.6 or (len(text_lower) > len(h) * 1.5):
-                     return True
+                    return True
+                
+        # Check for word repetition
+        words = text_lower.split()
+        if len(words) >= 3:
+            for i in range(len(words) - 2):
+                if words[i] == words[i+1] == words[i+2]:
+                    self.log.warning(f"Repetitive loop detected: {words[i]}")
+                    return True
+                
         return False
 
 
@@ -95,7 +109,7 @@ class SpeechToText:
 
         result = self.model.transcribe(
             x,
-            temperature = 0.0, 
+            temperature = (0.0, 0.2, 0.3), # Limit retries to 3 attempts (0.0, 0.2, 0.3), Default (0.0, 0.2, 0.4, 0.6, 0.8, 1.0)
             fp16=False, 
             language = LANGUAGE, 
             task="transcribe",
@@ -103,8 +117,8 @@ class SpeechToText:
             carry_initial_prompt=True,
             condition_on_previous_text = False,
             word_timestamps = True,
-            hallucination_silence_threshold = 0.8,
-            no_speech_threshold = 0.5,
+            hallucination_silence_threshold = HALLUCINATION_SILENCE_THRESHOLD_STT,
+            no_speech_threshold = NO_SPEECH_THRESHOLD_STT,
             compression_ratio_threshold=2.4,
             beam_size=1
             )
@@ -113,7 +127,7 @@ class SpeechToText:
 
 
 
- #———— Example Usage ————
+# ———— Example Usage ————
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s %(asctime)s] [%(name)s] %(message)s")
 

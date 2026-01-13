@@ -7,8 +7,10 @@ import threading
 from collections import deque
 
 from config.settings import (
-    MIN_SILENCE_MS_TO_DRAIN_STT, ACTIVATION_PHRASE_WAKE_WORD, LISTEN_SECONDS_STT, 
-    AUDIO_LISTENER_SAMPLE_RATE, VARIANTS_WAKE_WORD, AUDIO_LISTENER_CHANNELS, AVATAR
+    MIN_SILENCE_MS_TO_DRAIN_STT, ACTIVATION_PHRASE_WAKE_WORD,
+    LISTEN_SECONDS_STT, AUDIO_LISTENER_SAMPLE_RATE,
+    VARIANTS_WAKE_WORD, AUDIO_LISTENER_CHANNELS,
+    AVATAR, VAD_AGGRESSIVENESS, WAKE_WORD_REQUIRED_HITS
 )
 
 if AVATAR:
@@ -40,12 +42,12 @@ class WakeWord:
 
         #Debounce parameters 
         self.partial_hits = 0
-        self.required_hits = 10
+        self.required_hits = WAKE_WORD_REQUIRED_HITS
         self.silence_frames_to_drain = MIN_SILENCE_MS_TO_DRAIN_STT
 
         #VAD parameters
         # 10 ms → less latency (160 samples - 16 kHz)
-        self.vad = webrtcvad.Vad(3)  # Aggressiveness mode (0-3)
+        self.vad = webrtcvad.Vad(VAD_AGGRESSIVENESS)  # Aggressiveness mode
         self.frame_ms = 10
         self.frame_samples = int(self.sample_rate / 1000 * self.frame_ms)  # int16 mono
 
