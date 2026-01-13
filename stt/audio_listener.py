@@ -25,7 +25,6 @@ def no_alsa_err():
 # --------------------------------
 
 def define_device_id(pa:pyaudio.PyAudio = None, preferred:int = AUDIO_LISTENER_DEVICE_ID, log:logging.Logger = None) -> int:
-    # ... (Keep the rest of this function exactly as it is) ...
     """ Define the device id to use for audio input."""
     if preferred is not None:
         try:
@@ -61,9 +60,8 @@ class AudioListener:
         self.channels = AUDIO_LISTENER_CHANNELS 
         self.frames_per_buffer = AUDIO_LISTENER_FRAMES_PER_BUFFER
         self.stream = None
-        self.log.info(f"AudioListener initialized with device_index={self.device_index}, sample_rate={self.sample_rate}, channels={self.channels}, frames_per_buffer={self.frames_per_buffer} ✅ ")
+        self.log.info(f"Initialized with device_index={self.device_index}, sample_rate={self.sample_rate}")
 
-    # ... (Keep the rest of the class as it is) ...
     def start_stream(self):
         """ Start the audio stream if not already started."""
         if self.stream is None:

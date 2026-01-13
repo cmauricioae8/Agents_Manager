@@ -133,7 +133,9 @@ class TTS:
             self.pa.terminate()
             self.pa = None
             self.log.info("Py audio terminado correctamente")
-        
+
+
+
  #———— Example Usage ————
 if "__main__" == __name__:
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s %(asctime)s] [%(name)s] %(message)s")
@@ -144,7 +146,7 @@ if "__main__" == __name__:
     tts = TTS(str(model.ensure_model("tts")[0]), str(model.ensure_model("tts")[1]))
 
     try: 
-        print("Este es el nodo de prueba del Text to Speech 🔊 - Presione Ctrl+C para salir\n")
+        print("Este es el nodo de prueba del Text to Speech - Presione Ctrl+C para salir\n")
         while True:
             text = input("Escribe algo: ")
             get_audio = tts.synthesize(text)

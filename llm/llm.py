@@ -20,7 +20,7 @@ class LlmAgent:
         self.llm = LLM(model_path =  model_path)
         self.router = Router(self.llm)
         
-        self.log.info("LLM initialized - Octybot listo ✅ ")
+        self.log.info("LLM initialized - Octybot listo")
 
     def ask(self, text: str) -> None:
         """ Process a user input:
