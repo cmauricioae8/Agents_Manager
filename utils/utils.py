@@ -23,13 +23,13 @@ LEVEL_COLORS = {
 
 # Module Colors (To differentiate sources)
 MODULE_COLORS = {
-    "System": "\033[38;5;93m",         # Purple
+    "System": "\033[38;5;93m",          # Purple
     "Wake_Word": "\033[38;5;213m",      # Pink
-    "STT": "\033[38;5;85m",  # Turquoise
+    "STT": "\033[38;5;85m",             # Turquoise
     "LLM": "\033[96m",                  # Cyan
     "LLM_Data": "\033[36m",             # Cyan dim
-    "TTS": "\033[38;5;178m", # Gold
-    "Audio_Listener": "\033[38;5;208m",  # Orange
+    "TTS": "\033[38;5;178m",            # Gold
+    "Audio_Listener": "\033[38;5;208m", # Orange
 }
 
 class ColoredFormatter(logging.Formatter):

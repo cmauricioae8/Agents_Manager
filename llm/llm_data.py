@@ -37,7 +37,7 @@ class GENERAL_RAG:
                 elif isinstance(obj, list):
                     items = obj
                 self.items = items
-                self.log.info(f"Loaded {len(self.items)} RAG entries.")
+                self.log.info(f"Loaded {len(self.items)} RAG entries ")
             except json.JSONDecodeError:
                 self.items = [json.loads(line) for line in txt.splitlines() if line.strip()]
                 self.log.warning("JSON format issue, attempted line-by-line load.")

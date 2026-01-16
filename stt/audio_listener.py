@@ -30,7 +30,7 @@ def define_device_id(pa:pyaudio.PyAudio = None, preferred:int = AUDIO_LISTENER_D
         try:
             return preferred
         except Exception as e:
-            log.info(f"Error al usar device_index preferido {preferred}: {e}")
+            log.error(f"Error al usar device_index preferido {preferred}: {e}")
     
     elif pa is None:
         log.warning(f"Pyaudio instance no iniciado, no se puede listar dispositivos.")
@@ -40,9 +40,9 @@ def define_device_id(pa:pyaudio.PyAudio = None, preferred:int = AUDIO_LISTENER_D
         for i in range(pa.get_device_count()):
             info = pa.get_device_info_by_index(i)   
             if info.get('maxInputChannels', 0) > 0:
-                log.info(f"[{i}] {info['name']} (in={info['maxInputChannels']}, rate={int(info.get('defaultSampleRate',0))})")
+                log.debug(f"[{i}] {info['name']} (in={info['maxInputChannels']}, rate={int(info.get('defaultSampleRate',0))})")
                 if info['name'].lower() == "pulse":
-                    log.warning(f"[Audio_Listener - utils]Usando dispositivo PulseAudio por defecto: {i}")
+                    log.warning(f"Usando dispositivo PulseAudio por defecto: {i}")
                     return i
 
 class AudioListener:
