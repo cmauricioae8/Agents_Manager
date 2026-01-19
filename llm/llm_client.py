@@ -5,7 +5,9 @@ import json
 from typing import Optional, Dict, Any
 from llama_cpp import Llama
 
-from config.settings import CONTEXT_LLM,THREADS_LLM,N_BATCH_LLM,GPU_LAYERS_LLM,CHAT_FORMAT_LLM,USE_LLM
+from config.settings import (
+    CONTEXT_LLM, THREADS_LLM, N_BATCH_LLM, GPU_LAYERS_LLM,
+    CHAT_FORMAT_LLM, USE_LLM, REPEAT_PENALTY_LLM)
 from config.llm_system_prompt_def import GENERAL_SYSTEM_PROMPT
 
 class LLM:
@@ -56,9 +58,10 @@ class LLM:
         with self._lock:
             out = self._llm.create_chat_completion(
                 messages=messages,
-                temperature=0.2,
+                temperature=0.4,
                 top_p=0.9,
-                max_tokens=100,
+                max_tokens=120,
+                repeat_penalty=REPEAT_PENALTY_LLM,
             )
         msg = out["choices"][0]["message"]
         return (msg.get("content") or "").strip() or "No tengo una respuesta."
