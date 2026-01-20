@@ -12,27 +12,40 @@ import vosk
 import threading
 from collections import deque
 
-from config.settings import (
-    MIN_SILENCE_MS_TO_DRAIN_STT, ACTIVATION_PHRASE_WAKE_WORD,
-    LISTEN_SECONDS_STT, AUDIO_LISTENER_SAMPLE_RATE,
-    VARIANTS_WAKE_WORD, AUDIO_LISTENER_CHANNELS,
-    AVATAR, VAD_AGGRESSIVENESS, WAKE_WORD_REQUIRED_HITS
-)
+# Configuration
+from pathlib import Path
+import yaml
 
-if AVATAR:
-    import webbrowser, subprocess, sys
-    from pathlib import Path
-    from avatar.avatar_server import send_mode_sync
+BASE_DIR = Path(__file__).parent.parent
+SETTINGS = BASE_DIR / "config" / "settings.yml"
+
+with SETTINGS.open("r", encoding="utf-8") as f:
+    cfg = yaml.safe_load(f) or {}
+
+activation_phrase = cfg.get("wake_word", {}).get("activation_phrase", "ok robot")
+variants = cfg.get("wake_word", {}).get("variants", ["ok robot", "okay robot", "hey robot"])
+vad_aggressiveness = cfg.get("wake_word", {}).get("vad_aggressiveness", 3)
+required_hits = cfg.get("wake_word", {}).get("required_hits", 10)
+min_silence_ms_to_drain = cfg.get("stt", {}).get("min_silence_ms_to_drain", 100)
+listen_seconds = cfg.get("stt", {}).get("listen_seconds", 5)
+sample_rate = cfg.get("audio_listener", {}).get("sample_rate", 16000)
+channels = cfg.get("audio_listener", {}).get("channels", 1)
+
+
+# if AVATAR:
+#     import webbrowser, subprocess, sys
+#     from pathlib import Path
+#     from avatar.avatar_server import send_mode_sync
 
 
 class WakeWord:
     def __init__(self, model_path:str) -> None:
 
         self.log = logging.getLogger("Wake_Word")     
-        self.wake_word = ACTIVATION_PHRASE_WAKE_WORD
-        self.listen_seconds = LISTEN_SECONDS_STT
-        self.sample_rate = AUDIO_LISTENER_SAMPLE_RATE
-        self.variants = VARIANTS_WAKE_WORD
+        self.wake_word = activation_phrase
+        self.listen_seconds = listen_seconds
+        self.sample_rate = sample_rate
+        self.variants = variants
         
         #State Machine 
         # --- CHANGED FROM DEBUG TO INFO ---
@@ -54,12 +67,12 @@ class WakeWord:
 
         #Debounce parameters 
         self.partial_hits = 0
-        self.required_hits = WAKE_WORD_REQUIRED_HITS
-        self.silence_frames_to_drain = MIN_SILENCE_MS_TO_DRAIN_STT
+        self.required_hits = required_hits
+        self.silence_frames_to_drain = min_silence_ms_to_drain
 
         #VAD parameters
         # 10 ms → less latency (160 samples - 16 kHz)
-        self.vad = webrtcvad.Vad(VAD_AGGRESSIVENESS)  # Aggressiveness mode
+        self.vad = webrtcvad.Vad(vad_aggressiveness)  # Aggressiveness mode
         self.frame_ms = 10
         self.frame_samples = int(self.sample_rate / 1000 * self.frame_ms)  # int16 mono
 
@@ -67,31 +80,31 @@ class WakeWord:
         self.lock = threading.Lock()
         self.buffer = deque() 
         self.size = 0
-        self.max = int(self.listen_seconds * self.sample_rate * AUDIO_LISTENER_CHANNELS * 2) #2 bytes per int16 sample
-        self.max_2 = int(1 * self.sample_rate * AUDIO_LISTENER_CHANNELS * 2) #2 bytes per int16 sample
+        self.max = int(self.listen_seconds * self.sample_rate * channels * 2) #2 bytes per int16 sample
+        self.max_2 = int(1 * self.sample_rate * channels * 2) #2 bytes per int16 sample
 
-        #Initialize Avatar Server if needed
-        if AVATAR:
-            subprocess.Popen([sys.executable, "-m", "avatar.avatar_server"], stdin=subprocess.DEVNULL, stdout = subprocess.PIPE, stderr = subprocess.PIPE, text=True)
-            webbrowser.open(Path("avatar/OctoV.html").resolve().as_uri(), new=0, autoraise=True)
+        # #Initialize Avatar Server if needed
+        # if AVATAR:
+        #     subprocess.Popen([sys.executable, "-m", "avatar.avatar_server"], stdin=subprocess.DEVNULL, stdout = subprocess.PIPE, stderr = subprocess.PIPE, text=True)
+        #     webbrowser.open(Path("avatar/OctoV.html").resolve().as_uri(), new=0, autoraise=True)
 
     def wake_word_detector(self, frame: bytes) -> None | bytes:
         """Process one 10 ms PCM int16 mono frame for wake-word detection."""
         flag = True if self.vad.is_speech(frame, self.sample_rate) else False
 
-        if (self.listening or self.listening_confirm) and flag: #If I'm listening or If I got a confirmation i save the info
+        if (self.listening or self.listening_confirm) and flag: #If the system is listening or have a confirmation i save the info
             drained = self.buffer_add(frame)  
             if drained is not None:
-                send_mode_sync(mode = "TTS", as_json=False) if AVATAR else None
+                # send_mode_sync(mode = "TTS", as_json=False) if AVATAR else None
                 return drained
         
         if not flag: # If I hear silence
-            if self.partial_hits > -self.silence_frames_to_drain:  # I count how much silence I have
+            if self.partial_hits > -self.silence_frames_to_drain:  # Count how much silence is saved
                 self.partial_hits -= 1         
-            if (self.listening or self.listening_confirm) and self.partial_hits <= -self.silence_frames_to_drain: #If I'm listening and I pass my umbral of silence
+            if (self.listening or self.listening_confirm) and self.partial_hits <= -self.silence_frames_to_drain: #If is listening and the voice pass the umbral of silence
                 self.partial_hits = 0
-                send_mode_sync(mode = "TTS", as_json=False) if AVATAR else None
-                if self.listening_confirm and self.size > 0: # If I have the wake_word comfirm and I have something
+                # send_mode_sync(mode = "TTS", as_json=False) if AVATAR else None
+                if self.listening_confirm and self.size > 0: # If the wake_word is confirm and something is in the buffer
                     return self.buffer_drain()
                 self.on_say("Detection wasn't confirmed, clearing buffer...")
                 self.buffer_clear()
@@ -112,10 +125,10 @@ class WakeWord:
         else:
             partial = json.loads(self.rec.PartialResult() or "{}").get("partial", "").lower().strip()
             if partial:
-                if self.matches_wake(partial): #If I got something that looks like partial     
+                if self.matches_wake(partial): #If something looks like a partial detection     
                     if not self.listening: 
                         self.listening = True
-                        send_mode_sync(mode = "USER", as_json=False) if AVATAR else None
+                        # send_mode_sync(mode = "USER", as_json=False) if AVATAR else None
                         drained = self.buffer_add(frame) if flag else None
                         if drained is not None:
                             return drained
@@ -138,7 +151,7 @@ class WakeWord:
         if self.size > self.max_2 and self.listening and not self.listening_confirm:
             self.on_say("Límite de tiempo alcanzado sin confirmación, limpiando buffer")
             self.buffer_clear()
-            send_mode_sync(mode = "TTS", as_json=False) if AVATAR else None
+            # send_mode_sync(mode = "TTS", as_json=False) if AVATAR else None
         return None
 
     def buffer_clear(self) -> None:

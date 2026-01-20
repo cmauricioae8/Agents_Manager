@@ -4,8 +4,19 @@ import yaml
 import logging
 import sys
 import warnings
-from typing import Any, Dict, List, TypedDict, Optional
-from config.settings import MODELS_PATH
+from typing import Any, Dict, List, TypedDict
+
+# Configuration
+from pathlib import Path
+import yaml
+
+BASE_DIR = Path(__file__).parent.parent
+SETTINGS = BASE_DIR / "config" / "settings.yml"
+
+with SETTINGS.open("r", encoding="utf-8") as f:
+    cfg = yaml.safe_load(f) or {}
+
+models_path = cfg.get("models_path", "config/models.yml")
 
 # --- COLOR CODES ---
 RESET = "\033[0m"
@@ -27,7 +38,7 @@ MODULE_COLORS = {
     "Wake_Word": "\033[38;5;213m",      # Pink
     "STT": "\033[38;5;85m",  # Turquoise
     "LLM": "\033[96m",                  # Cyan
-    "LLM_Data": "\033[36m",             # Cyan dim
+    "Diffuse_Search": "\033[36m",             # Cyan dim
     "TTS": "\033[38;5;178m", # Gold
     "Audio_Listener": "\033[38;5;208m",  # Orange
 }
@@ -114,7 +125,7 @@ def configure_logging():
 
 def load_yaml() -> Dict[str, Any]:
     """Is for load yaml files, but we use it just for models"""
-    p = Path(MODELS_PATH)
+    p = Path(models_path)
     if not p.exists():
         raise FileNotFoundError(f"No existe: {p}")
     with p.open("r", encoding="utf-8") as f:
@@ -157,6 +168,11 @@ class LoadModel:
             models.append(Path(model_dir))
         return(models)
 
+    def voice_pair(self, n: int) -> tuple[int, int]:
+        # n empieza en 1
+        base = 2 * (n - 1)
+        return base, base + 1
+    
 if "__main__" == __name__:
     configure_logging()
     ensure_model = LoadModel()

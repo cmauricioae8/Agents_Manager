@@ -1,0 +1,56 @@
+# --------------------------------------------------------------------------
+# GLOBAL CONFIGURATION SETTINGS
+# --------------------------------------------------------------------------
+# This file controls the behavior of the entire Agents_Manager package.
+# Adjust these parameters to tune performance, sensitivity, and functionality.
+# --------------------------------------------------------------------------
+
+# --- Global Settings ---
+language: "es"                  # ISO code for the language (currently optimized for Spanish)
+models_path: "config/models.yml" # Path to the model definition file
+
+# --- Audio Listener (Microphone Input) ---
+audio_listener:
+  device_id: null               # Force a specific device ID (null = auto-detect)
+  channels: 1                   # Audio channels: 1 = Mono, 2 = Stereo
+  sample_rate: 16000            # Sampling rate in Hz (16000 is standard for speech)
+  frames_per_buffer: 1000       # Buffer size for audio stream
+
+# --- Wake Word Detection (Hotword) ---
+wake_word:
+  activation_phrase: "ok robot" # Primary activation phrase
+  variants:                     # Acceptable variations of the phrase
+    - "ok robot"
+    - "okay robot"
+    - "hey robot"
+  vad_aggressiveness: 3         # (0 -> 3) 0 = least, 3 = most strict filtering
+  required_hits: 10             # Consecutive partial matches required to trigger activation
+
+# --- Speech-to-Text (STT - Whisper) ---
+stt:
+  device_selector: "cpu"        # Inference device: "cpu" or "cuda"
+  sample_rate: 16000            # DO NOT CHANGE - Required sample rate for Whisper
+  listen_seconds: 5.0           # Max recording duration after wake word detection
+  min_silence_ms_to_drain: 100  # Silence duration (ms) required to stop recording early
+  self_vocabulary: "DatIA Demographics" # Custom vocabulary hints for the model
+
+  # Tuning Thresholds:
+  no_speech_threshold: 0.5              # (0.0 -> 1.0) Higher = stricter
+  hallucination_silence_threshold: 0.3  # (0.1 -> 0.9) Discard text if model suspects silence
+
+# --- fuzzy_search & Information Retrieval ---
+fuzzy_search:
+  fuzzy_logic_accuracy_general: 0.70    # Similarity threshold (0.0 -> 1.0) to match fuzzy_search entries
+  path_general: "config/data/general_rag.json" # Path to the knowledge base
+  use_rapidfuzz: true                  # False: Only if rapidfuzz is not available
+
+# --- Text-to-Speech (TTS) ---
+tts:
+  sample_rate: 24000            # Output sample rate
+  device_selector: "cpu"        # Inference device: "cpu" or "cuda"
+  volume: 2.0                   # Output volume multiplier
+  speed: 1.0                    # Speech speed: 1.0 = Normal, 2.0 = Slow
+  path_to_save: "tts/audios"    # Directory to save generated audio files
+  name_of_outs: "test"          # Base filename for saved audios
+  save_wav: false               # Flag to save audio files to disk
+  voice: 0                      # 1 = Octybot Medium, 0 = Claude High

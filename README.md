@@ -1,9 +1,10 @@
-# Local LLM
+# Agents_Manager
 
 [![Python](https://img.shields.io/badge/Python-3.10+-yellow.svg)](https://www.python.org/)
 
 
-Python package that integrates a local Large Language Model with a fully offline speech pipeline, enabling natural language understanding and response without requiring cloud connectivity. This optimized implementation features a streamlined LLM module with improved pattern matching, enhanced error handling, and a cleaner codebase. The system includes everything needed for the complete pipeline: Wake Word Detection, Speech-to-Text (STT), LLM Processing, and Text-to-Speech (TTS). Each module is organized in separate folders with dedicated documentation.
+Python package for fully offline fuzzy retrieval (fuzzy_search-style) with an optional speech pipeline.
+It provides fast, robust approximate matching over a local knowledge base, with improved pattern matching, stronger error handling, and a cleaner, modular codebase. The project is organized by modules (Wake Word, STT, Fuzzy Search, TTS), each living in its own folder with dedicated documentation
 
 ---
 
@@ -30,8 +31,8 @@ Python package that integrates a local Large Language Model with a fully offline
 
 ```bash
 # Clone the repository
-git clone https://github.com/TheBIGduke/Local-LLM.git
-cd Local-LLM
+git ...
+cd Agents_Manager
 ```
 
 ### Setup
@@ -81,19 +82,15 @@ The script installs everything into your cache directory (`~/.cache/octy`).
 <h2 id="configuration">Configuration</h2>
 
 > [!WARNING]
-> LLMs and audio models can be large. Ensure you have enough disk space and RAM/VRAM for your chosen settings.
+> Audio models can be large. Ensure you have enough disk space and RAM/VRAM for your chosen settings.
 
 ### General Settings (`config/settings.py`)
 
-All runtime settings are defined in **`config/settings.py`**. These are plain Python constants—edit the file and restart your scripts to apply changes.
+All runtime settings are defined in **`config/settings.yml`**. These are plain Python constants—edit the file and restart your scripts to apply changes.
 
 ### Model Catalog (`config/models.yml`)
 
 Define which models the system uses (LLM, STT, TTS, wake word) along with their URLs and sample rates.
-
-### System Prompt Definition (`config/llm_system_prompt_def.py`)
-
-To rewrite or define a new LLM System Prompt, edit this file.
 
 ### Data for Common Questions (`config/data/general_rag.json`)
 
@@ -104,11 +101,11 @@ All general questions and answers are stored in `config/data/general_rag.json`. 
 <h2 id="quick-start">Quick Start</h2>
 
 ```bash
-cd Local-LLM
+cd Agents_Manager
 source .venv/bin/activate
 ```
 
-### Launch the Full Pipeline (Wake Word, STT, LLM, TTS)
+### Launch the Full Pipeline (Wake Word, STT, Fuzzy Search, TTS)
 
 Start everything with:
 
@@ -118,24 +115,25 @@ python -m main
 
 Now say `ok robot` — the system will start listening and run the complete pipeline.
 
-### Run Individual Module Tests
+### Run
 
-**LLM Module:**
+**Run the full pipeline (recommended):**
 
 ```bash
-python -m llm.llm
+python -m main
+```
+
+**Fuzzy Search Module:**
+
+```bash
+python -m fuzzy_search.fuzzy_search
 ```
 
 **Speech to Text Module:**
 
 ```bash
-# To test the Audio Listener 
-python -m stt.audio_listener
-
-# To test the Wake Word Detector
-python -m stt.wake_word
-
-# To test Speech-to-Text
+# To test Speech-to-Text 
+# Remember to Say "ok Robot"
 python -m stt.speech_to_text
 ```
 
@@ -153,142 +151,58 @@ python -m tts.text_to_speech
 
 <h2 id="usage">Usage</h2>
 
-### LLM Module
+### Fuzzy Search Module
 
 This is a minimal example of what you can do with this package. You will find examples of how to retrieve information from the general knowledge base and respond using the LLM.
 
 > [!TIP]
-> When integrating this into your system, consider using the LLM only when truly necessary. In most cases, tasks can be solved with pattern matching or by consuming information from the general knowledge base (RAG).
+> When integrating this into your system, consider using the LLM only when truly necessary. In most cases, tasks can be solved with pattern matching or by consuming information from the general knowledge base (fuzzy_search).
 
-#### Agent Intents (`handle(data, tipo)`)
+### Fuzzy Search Module (fuzzy_search)
 
-| `tipo`     | What it does | Input `data` | Output shape | What it represents |
-|------------|--------------|--------------|--------------|-------------------|
-| `rag`      | Returns `data` as-is (external RAG already resolved). | Pre-composed string from your RAG (e.g., `general_rag.json`) | `str` | Retrieve information from the knowledge base. |
-| `general`  | Free-form Q&A via `llm.answer_general`. | Question string | `str` | Minimal example of using the LLM for general queries. |
+This module provides a lightweight, fully offline **fuzzy retrieval layer** over a local knowledge base (`general_rag.json`). It loads trigger/answer pairs at startup, normalizes incoming queries, and then scores each trigger using either **RapidFuzz** (recommended, faster) or Python’s built-in `SequenceMatcher`.
 
-#### Add a New Intent / Tool
+If the best similarity score meets your configured threshold (`fuzzy_logic_accuracy_general`), it returns the corresponding answer; otherwise it returns an empty result.
 
-The flow is: **patterns → intent detection → router → tool implementation**.
+Configuration is read from `config/settings.yml` under the `fuzzy_search` section (threshold, KB path, and whether to use RapidFuzz). The included CLI example lets you type questions and prints the matched answer when confidence is high enough.
 
-Your text is normalized (`norm_text`) before matching (lowercase, accents removed, courtesy words stripped), so keep patterns simple.
 
-##### 1) Declare patterns in `llm_patterns.py`
+#### Add a New Trigger / Answer
 
-Add a compiled regex that captures the trigger words for your new intent (example: "time" intent).
+The flow is: **triggers → fuzzy match (fuzzy_search) → answer**.
 
-```python
-# llm_patterns.py
-import re
+Your input text is normalized (`norm_text`) before matching (lowercase, accents removed, courtesy words stripped), so keep triggers short and simple.
 
-TIME_WORDS_RE = re.compile(r"""
-(?xi)
-\b(
-    hora|que\s+hora|time|current\s+time
-)\b
-""")
-```
+**Format:** `trigger -> answer`
 
-Add the pattern to the executor:
+- `como te llamas -> Mi nombre es Octybot.`
+- `quien eres -> Soy un agente virtual con búsqueda difusa en una base de conocimiento local.`
+- `que puedes hacer -> Puedo responder preguntas usando una base de conocimiento local (fuzzy_search) sin conexión a internet.`
+- `hola -> ¡Hola! ¿En qué puedo ayudarte?`
+- `gracias -> ¡De nada!`
 
-```python
-# Define the functions with corresponding patterns
-INTENT_RES = {
-    "time": TIME_WORDS_RE,
-}
-
-# Define the priority of function execution
-INTENT_PRIORITY = ("time",)
-
-# kind_group: "first" (short) or "second" (long) determines execution order
-# need_user_input: True if user query is needed, False otherwise
-INTENT_ROUTING = {
-    "time": {"kind_group": "first", "kind": "time", "need_user_input": False},
-}
-```
-
-##### 2) Implement the tool in `llm_tools.py` (class GetInfo)
-
-Tools that should be spoken by TTS should return a string.
-
-```python
-def tool_get_time(self) -> str:
-    from datetime import datetime
-    now = datetime.now()
-    return f"{now.hour:02d}:{now.minute:02d}"
-```
-
-##### 3) Wire it into the router
-
-Pass the tool to the `Router` constructor and handle it in `llm_router.py`.
-
-```python
-# llm_router.py
-class Router:
-    def __init__(self, llm):
-        self.llm = llm
-        self.handlers: Dict[str, Callable[[str], str]] = {
-            "rag": self.data_return,
-            "general": self.general_response_llm,
-            "time": self.publish_time,  # NEW
-        }
-    
-    def publish_time(self, data: str) -> str:  # NEW
-        hours, minutes = self.get_info.tool_get_time()
-        return f"Son las {hours}:{minutes}"
-```
-
----
-
-#### Avatar
-
-Enable a simple on-screen "avatar" to visualize the pipeline (wake word, STT, LLM, TTS).
-
-##### 1) Turn it on
-
-Open `config/settings.py` and set:
-
-```python
-AVATAR = True
-```
-
-##### 2) Grant access to your I/O
-
-The avatar uses your microphone and speakers. For setup notes (devices, permissions, troubleshooting), see the [Avatar README](avatar/README.md).
-
-##### 3) Start the avatar
-
-From your project root, either:
-
-**Run the full pipeline (recommended):**
-
-```bash
-python -m main
-```
-
-Or **run only the Wake Word test (for a quick check):**
-
-```bash
-python -m stt.wake_word
-```
 
 ##### What you should see
 
-- **Idle Mode:** The ball appears blue and remains static with no deformation.
-- **Wake word detected:** The ball turns gold, indicating it is actively listening.
-- **STT running:** The ball deforms dynamically, following the waveforms of your voice input.
-- **TTS speaking:** The ball returns to blue and moves according to the output audio waveform.
+- **fuzzy_search loaded:** Logs like `[Diffuse_Search] Loading GENERAL_RAG...` followed by `Loaded 395 fuzzy_search entries`.
+- **TTS initialized:** `[TTS] Loading whisper TTS model...` then `Text To Speech initialized.`
+- **System ready:** `[System] System Ready & Listening...` plus the banner:
+    - `Octybot Virtual Agent`
+    - `Say 'Ok Robot' to start...`
+    - `Press Ctrl+C to exit`
+
+- **Wake word detected:** `[Wake_Word] Wake word detected: 'okay robot'` and then `Audio sent to STT` (you may also see repeated Partial Match: 'ok robot' lines).
+- **STT transcript:** `[STT] STT transcribed = ¿Cómo te llamas?`
+- **Fuzzy match (Fuzzy Search):** `[Diffuse_Search] Match: 'como te llamas?' -> 'Mi nombre es Octybot...' (1.00)`
 
 > [!TIP]
-> If the ball does not deform, you will see a message in the web interface. This usually means there is a configuration issue—please check the [Avatar README](avatar/README.md) for setup details.
-
-This will open a local HTML page (the avatar UI). Try the full flow: say **"ok robot, como te llamas"** and watch the indicators change.
+> Seeing warnings like **“Performing inference on CPU when CUDA is available”** or the **TBB threading layer** notice is expected in some setups. If you want GPU/STT acceleration, set your STT device to cuda (and make sure your environment supports it).
 
 ---
 
 <h2 id="based-on">Based On</h2>
 
-This project is derived from **Local-LLM-for-Robots** by JossueE. The original repository provides a complete robot voice interaction system including wake word detection, LLM integration, and avatar visualization.
+This project is derived from **Agents_Manager-for-Robots** by JossueE. The original repository provides a complete robot voice interaction system including wake word detection, LLM integration, and avatar visualization.
 
 OctyVoice Engine extracts and modernizes the core STT/TTS pipeline with:
 
@@ -298,25 +212,7 @@ OctyVoice Engine extracts and modernizes the core STT/TTS pipeline with:
 - Improved device detection
 - Simplified API for users who need just voice conversion functionality
 
-For the full system, visit the [original repository](https://github.com/JossueE/Local-LLM-for-Robots).
-
-
-<h3 id="short-demo">Short Demo</h3>
-
-Here is a short demo of the Avatar system in action, showing how the visualization reacts when the wake word is detected and triggers the full interaction pipeline.
-
-<p align="center">
-  <a href="https://youtu.be/PP4M3LmFDbM" target="_blank">
-    <img src="https://img.youtube.com/vi/PP4M3LmFDbM/hqdefault.jpg" width="720" alt="Avatar Demo YouTube">
-  </a>
-</p>
-
-When the wake word is detected, the avatar changes its color and responds with speech.
-
-> [!NOTE]
-> This avatar system was originally developed by [TheBIGduke](https://github.com/TheBIGduke/OctoV)
-
-![Avatar Demo](docs/avatar/avatar.gif)
+For the full system, visit the [original repository](https://github.com/JossueE/Agents_Manager-for-Robots).
 
 
 ---

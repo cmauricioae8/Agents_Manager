@@ -2,8 +2,24 @@ import os
 import sys
 from contextlib import contextmanager
 import pyaudio
-from config.settings import AUDIO_LISTENER_DEVICE_ID, AUDIO_LISTENER_SAMPLE_RATE, AUDIO_LISTENER_CHANNELS, AUDIO_LISTENER_FRAMES_PER_BUFFER
 import logging
+
+# Configuration
+from pathlib import Path
+import yaml
+
+
+BASE_DIR = Path(__file__).parent.parent
+SETTINGS = BASE_DIR / "config" / "settings.yml"
+
+
+with SETTINGS.open("r", encoding="utf-8") as f:
+    cfg = yaml.safe_load(f) or {}
+
+device_id = cfg.get("audio_listener", {}).get("device_id", None)
+sample_rate = cfg.get("audio_listener", {}).get("sample_rate", 16000)
+channels = cfg.get("audio_listener", {}).get("channels", 1)
+frames_per_buffer = cfg.get("audio_listener", {}).get("frames_per_buffer", 1000)
 
 # --- ADD THIS CONTEXT MANAGER ---
 @contextmanager
@@ -24,7 +40,7 @@ def no_alsa_err():
         os.close(devnull)
 # --------------------------------
 
-def define_device_id(pa:pyaudio.PyAudio = None, preferred:int = AUDIO_LISTENER_DEVICE_ID, log:logging.Logger = None) -> int:
+def define_device_id(pa:pyaudio.PyAudio = None, preferred:int = device_id, log:logging.Logger = None) -> int:
     """ Define the device id to use for audio input."""
     if preferred is not None:
         try:
@@ -48,7 +64,7 @@ def define_device_id(pa:pyaudio.PyAudio = None, preferred:int = AUDIO_LISTENER_D
 class AudioListener:
     def __init__(self):
         self.log = logging.getLogger("Audio_Listener")  
-        self.sample_rate = AUDIO_LISTENER_SAMPLE_RATE
+        self.sample_rate = sample_rate
         
         # --- UPDATE THIS BLOCK ---
         # We wrap the PyAudio initialization with our suppressor
@@ -56,9 +72,9 @@ class AudioListener:
             self.audio_interface = pyaudio.PyAudio()
         # -------------------------
 
-        self.device_index = define_device_id(self.audio_interface, AUDIO_LISTENER_DEVICE_ID, self.log)
-        self.channels = AUDIO_LISTENER_CHANNELS 
-        self.frames_per_buffer = AUDIO_LISTENER_FRAMES_PER_BUFFER
+        self.device_index = define_device_id(self.audio_interface, device_id, self.log)
+        self.channels = channels 
+        self.frames_per_buffer = frames_per_buffer
         self.stream = None
         self.log.info(f"Initialized with device_index={self.device_index}, sample_rate={self.sample_rate}")
 
@@ -92,3 +108,15 @@ class AudioListener:
         if self.stream is not None:
             self.stop_stream()
         self.audio_interface.terminate()
+
+
+ #———— Example Usage ————
+if "__main__" == __name__:
+    al = AudioListener()
+    time_test = 3
+    al.start_stream()
+    import time
+    time.sleep(time_test)
+    data = al.read_frame(3200)
+    print(f"Durante {time_test} segundos, leíste {len(data)} bytes. Tu AudioListener funciona correctamente ✅")
+    al.stop_stream()

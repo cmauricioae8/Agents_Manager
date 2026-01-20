@@ -6,9 +6,23 @@ import numpy as np
 import whisper
 from difflib import SequenceMatcher
 
-from config.settings  import (
-    SAMPLE_RATE_STT, LANGUAGE, SELF_VOCABULARY_STT,DEVICE_SELECTOR_STT,
-    NO_SPEECH_THRESHOLD_STT, HALLUCINATION_SILENCE_THRESHOLD_STT) 
+# Configuration
+from pathlib import Path
+import yaml
+
+BASE_DIR = Path(__file__).parent.parent
+SETTINGS = BASE_DIR / "config" / "settings.yml"
+
+with SETTINGS.open("r", encoding="utf-8") as f:
+    cfg = yaml.safe_load(f) or {}
+
+language = cfg.get("language", "es")
+device_selector = cfg.get("stt", {}).get("device_selector", "cpu")
+sample_rate = cfg.get("stt", {}).get("sample_rate", 16000)
+self_vocabulary = cfg.get("stt", {}).get("self_vocabulary", None)
+no_speech_threshold = cfg.get("stt", {}).get("no_speech_threshold", 0.5)
+hallucination_silence_threshold = cfg.get("stt", {}).get("hallucination_silence_threshold", 0.3)
+
 
 class SpeechToText:
     def __init__(self, model_path:str, model_name:str) -> None:
@@ -17,7 +31,7 @@ class SpeechToText:
 
         model_path = Path(model_path)
 
-        self.model = whisper.load_model(model_name, download_root = model_path.parent, device=DEVICE_SELECTOR_STT)
+        self.model = whisper.load_model(model_name, download_root = model_path.parent, device=device_selector)
         
 
         # --- This patch is to avoid a bug from Whisper, it helps to catch commonly known hallucination outputs
@@ -104,21 +118,21 @@ class SpeechToText:
 
         x = pcm.astype(np.float32) / 32768.0
 
-        if SAMPLE_RATE_STT != 16000:
-            self.log.warning(f"Whisper only works at 16 Khz, info is being sent at {SAMPLE_RATE_STT}hz")
+        if sample_rate != 16000:
+            self.log.warning(f"Whisper only works at 16 Khz, info is being sent at {sample_rate}hz")
 
         result = self.model.transcribe(
             x,
             temperature = (0.0, 0.2, 0.3), # Limit retries to 3 attempts (0.0, 0.2, 0.3), Default (0.0, 0.2, 0.4, 0.6, 0.8, 1.0)
             fp16=False, 
-            language = LANGUAGE, 
+            language = language, 
             task="transcribe",
-            initial_prompt = SELF_VOCABULARY_STT,
+            initial_prompt = self_vocabulary,
             carry_initial_prompt=True,
             condition_on_previous_text = False,
             word_timestamps = True,
-            hallucination_silence_threshold = HALLUCINATION_SILENCE_THRESHOLD_STT,
-            no_speech_threshold = NO_SPEECH_THRESHOLD_STT,
+            hallucination_silence_threshold = hallucination_silence_threshold,
+            no_speech_threshold = no_speech_threshold,
             compression_ratio_threshold=2.4,
             beam_size=1
             )

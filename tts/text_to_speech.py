@@ -7,7 +7,27 @@ import pyaudio
 import logging
 from pathlib import Path
 from piper.voice import PiperVoice, SynthesisConfig
-from config.settings import  SAMPLE_RATE_TTS, SAVE_WAV_TTS, PATH_TO_SAVE_TTS, NAME_OF_OUTS_TTS, VOLUME_TTS, SPEED_TTS
+
+# Configuration
+from pathlib import Path
+import yaml
+
+
+BASE_DIR = Path(__file__).parent.parent
+SETTINGS = BASE_DIR / "config" / "settings.yml"
+
+
+with SETTINGS.open("r", encoding="utf-8") as f:
+    cfg = yaml.safe_load(f) or {}
+
+device_selector = cfg.get("tts", {}).get("device_id", "cpu")
+sample_rate = cfg.get("tts", {}).get("sample_rate", 24000)
+volume = cfg.get("tts", {}).get("volume", 2.0)
+speed = cfg.get("tts", {}).get("speed", 1.0)
+path_to_save = cfg.get("tts", {}).get("path_to_save", "tts/audios")
+name_of_outs = cfg.get("tts", {}).get("name_of_outs", "test")
+save_wav = cfg.get("tts", {}).get("save_wav", False)
+
 
 class TTS:
     def __init__(self, model_path:str, model_path_conf:str):
@@ -15,13 +35,13 @@ class TTS:
         self.log.info("Loading Whisper TTS model...")
         self.log = logging.getLogger("TTS")
         self.voice = PiperVoice.load(model_path = model_path,config_path = model_path_conf )
-        self.sample_rate = SAMPLE_RATE_TTS
+        self.sample_rate = sample_rate
         self.count_of_audios = 0
-        self.out_path = Path(PATH_TO_SAVE_TTS) / Path(NAME_OF_OUTS_TTS) / Path(f"{NAME_OF_OUTS_TTS}_{self.count_of_audios}.wav")
+        self.out_path = Path(path_to_save) / Path(name_of_outs) / Path(f"{name_of_outs}_{self.count_of_audios}.wav")
         
         self.syn_config = SynthesisConfig(
-            volume = VOLUME_TTS,  # half as loud
-            length_scale = SPEED_TTS,  # twice as slow
+            volume = volume,  # half as loud
+            length_scale = speed,  # twice as slow
             noise_scale = 1.0,  # more audio variation
             noise_w_scale = 1.0,  # more speaking variation
             normalize_audio=False, # use raw audio from voice
@@ -41,12 +61,12 @@ class TTS:
         if not text:
             return None
         
-        if SAVE_WAV_TTS:
+        if save_wav:
             self.out_path.parent.mkdir(parents=True, exist_ok=True)
             with wave.open(str(self.out_path), "wb") as wav_file:
                 self.voice.synthesize_wav(text, wav_file, syn_config=self.syn_config)
                 self.count_of_audios += 1
-                self.out_path = Path(PATH_TO_SAVE_TTS) / Path(NAME_OF_OUTS_TTS) / Path(f"{NAME_OF_OUTS_TTS}_{self.count_of_audios}.wav")
+                self.out_path = Path(path_to_save) / Path(name_of_outs) / Path(f"{name_of_outs}_{self.count_of_audios}.wav")
 
         mem = io.BytesIO()
         with wave.open(mem, "wb") as w:
@@ -142,9 +162,19 @@ if "__main__" == __name__:
     logging.basicConfig(level=logging.INFO, format="[%(levelname)s %(asctime)s] [%(name)s] %(message)s")
 
     from utils.utils import LoadModel
-    
+
+    # Configuration
+    from pathlib import Path
+    import yaml
+    BASE_DIR = Path(__file__).parent.parent
+    SETTINGS = BASE_DIR / "config" / "settings.yml"
+    with SETTINGS.open("r", encoding="utf-8") as f:
+        cfg = yaml.safe_load(f) or {}
+    voice = cfg.get("tts", {}).get("voice", 1)
+
     model = LoadModel()
-    tts = TTS(str(model.ensure_model("tts")[0]), str(model.ensure_model("tts")[1]))
+    voice_id, decoder = model.voice_pair(voice)
+    tts = TTS(str(model.ensure_model("tts")[voice_id]), str(model.ensure_model("tts")[decoder]))
 
     try: 
         print("Este es el nodo de prueba del Text to Speech - Presione Ctrl+C para salir\n")
