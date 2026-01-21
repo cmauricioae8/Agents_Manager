@@ -1,5 +1,3 @@
-# Runtime dependencies for Local Agent Embedded
-
 # Fuzzy inference
 rapidfuzz==3.13.0
 tbb>=2021.6.0
